@@ -21,6 +21,7 @@ module.exports = (sequelize, Sequelize) => {
     },
     role: {
       type: Sequelize.ENUM("admin", "sales_rep", "warehouse", "delivery"),
+      defaultValue: "sales_rep",
       allowNull: false,
     },
     region_id: {

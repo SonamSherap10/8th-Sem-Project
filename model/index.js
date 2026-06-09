@@ -1,5 +1,6 @@
 const dbConfig = require('../dbConfig/dbConfig');
 const Sequelize = require('sequelize');
+const adminSeeder = require('../adminSeeder');
 const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
     host: dbConfig.HOST,
     dialect: dbConfig.dialect,
@@ -90,6 +91,7 @@ db.ReturnItem.belongsTo(db.Batch,   { foreignKey: 'batch_id' });
 sequelize.authenticate()
     .then(() => {
         console.log('Database connected successfully');
+        adminSeeder(db.User);
     })
     .catch(error => {
         console.error('Unable to connect to the database:', error);
