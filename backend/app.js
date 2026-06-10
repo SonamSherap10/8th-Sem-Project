@@ -3,6 +3,7 @@ const app = express();
 const db = require('./model/index');
 
 const authRoute = require('./route/authRoute');
+const adminRoute = require('./route/adminRoute');
 
 db.sequelize.sync({force : false}) 
 const port = process.env.PORT || 7878;
@@ -11,8 +12,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoute);
+app.use('/api/admin', adminRoute);
 
 
 app.listen(port, () => {
     console.log('Server is running on port ' + port);
-});
+}); 

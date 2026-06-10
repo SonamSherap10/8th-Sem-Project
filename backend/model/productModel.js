@@ -18,6 +18,10 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING,
       allowNull: false,
     },
+    // price: {
+    //   type: Sequelize.INTEGER,
+    //   allowNull: false,
+    // },
     is_perishable: {
       type: Sequelize.BOOLEAN,
       allowNull: false,
