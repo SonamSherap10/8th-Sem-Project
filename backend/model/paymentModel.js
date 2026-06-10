@@ -2,26 +2,26 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Payment = sequelize.define("Payment", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     retailer_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Retailers", key: "id" },
       onUpdate: "CASCADE",
       onDelete: "RESTRICT",
     },
     invoice_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Invoices", key: "id" },
       onUpdate: "CASCADE",
       onDelete: "RESTRICT",
     },
     collected_by: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Users", key: "id" },
       onUpdate: "CASCADE",

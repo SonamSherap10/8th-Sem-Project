@@ -2,8 +2,8 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const User = sequelize.define("User", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     name: {
@@ -25,7 +25,7 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: false,
     },
     region_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: true,
       references: {
         model: "Regions",

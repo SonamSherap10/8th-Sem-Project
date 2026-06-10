@@ -2,8 +2,8 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Product = sequelize.define("Product", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     name: {
@@ -18,10 +18,10 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING,
       allowNull: false,
     },
-    // price: {
-    //   type: Sequelize.INTEGER,
-    //   allowNull: false,
-    // },
+    price: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+    },
     is_perishable: {
       type: Sequelize.BOOLEAN,
       allowNull: false,

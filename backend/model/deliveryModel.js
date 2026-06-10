@@ -2,12 +2,12 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Delivery = sequelize.define("Delivery", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     order_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       unique: true,
       references: { model: "Orders", key: "id" },
@@ -15,7 +15,7 @@ module.exports = (sequelize, Sequelize) => {
       onDelete: "RESTRICT",
     },
     delivery_person_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Users", key: "id" },
       onUpdate: "CASCADE",

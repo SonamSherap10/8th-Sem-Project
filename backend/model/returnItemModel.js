@@ -2,26 +2,26 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const ReturnItem = sequelize.define("ReturnItem", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     return_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Returns", key: "id" },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     },
     product_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
       references: { model: "Products", key: "id" },
       onUpdate: "CASCADE",
       onDelete: "RESTRICT",
     },
     batch_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: true,
       references: { model: "Batches", key: "id" },
       onUpdate: "CASCADE",

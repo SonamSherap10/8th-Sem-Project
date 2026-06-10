@@ -2,8 +2,8 @@ const { Sequelize } = require("sequelize");
 module.exports = (sequelize, Sequelize) => {
   const Alert = sequelize.define("Alert", {
     id: {
-      type: Sequelize.UUID,
-      defaultValue: Sequelize.UUIDV4,
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
     type: {
@@ -11,7 +11,7 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: false,
     },
     reference_id: {
-      type: Sequelize.UUID,
+      type: Sequelize.INTEGER,
       allowNull: false,
     },
     reference_type: {
