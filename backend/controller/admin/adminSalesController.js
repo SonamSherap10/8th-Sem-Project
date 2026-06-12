@@ -185,17 +185,23 @@ const getRepPerformance = async (req, res) => {
 
     const monthNum = Number(month);
     const yearNum = Number(year);
+const totalSold = await db.Order.sum("total_amount", {
+  where: {
+    sales_rep_id: user_id,
+    status: { [Op.ne]: "cancelled" },
+    [Op.and]: [
+      Sequelize.where(
+        Sequelize.fn("MONTH", Sequelize.col("Order.order_date")),
+        monthNum
+      ),
+      Sequelize.where(
+        Sequelize.fn("YEAR", Sequelize.col("Order.order_date")),
+        yearNum
+      ),
+    ],
+  },
+});
 
-    const totalSold = await db.Order.sum("total_amount", {
-      where: {
-        sales_rep_id: user_id,
-        status: { [Op.ne]: "cancelled" },
-        [Op.and]: [
-          Sequelize.where(Sequelize.fn("MONTH", Sequelize.col("order_date")), monthNum),
-          Sequelize.where(Sequelize.fn("YEAR", Sequelize.col("order_date")), yearNum),
-        ],
-      },
-    });
     if (!totalSold) {
   return res.status(404).json({
     error: `No orders found for this sales rep in ${monthNum}/${yearNum}`,
@@ -213,21 +219,14 @@ const getRepPerformance = async (req, res) => {
       ? (soldAmount / targetAmount) * 100
       : 0;
 
-    const totalDue = await db.Invoice.sum("total_amount", {
-      include: [
-        {
-          model: db.Order,
-          attributes: [],
-          where: {
-            sales_rep_id: user_id,
-            [Op.and]: [
-              Sequelize.where(Sequelize.fn("MONTH", Sequelize.col("Order.order_date")), monthNum),
-              Sequelize.where(Sequelize.fn("YEAR", Sequelize.col("Order.order_date")), yearNum),
-            ],
-          },
-        },
-      ],
-    });
+    const totalDue = await db.sequelize.query(
+  `SELECT SUM(i.total_amount) as total FROM Invoices i JOIN Orders o ON i.order_id = o.id WHERE o.sales_rep_id = :user_id
+    AND MONTH(o.order_date) = :month AND YEAR(o.order_date) = :year`,
+  {
+    replacements: { user_id, month: monthNum, year: yearNum },
+    type: db.sequelize.QueryTypes.SELECT,
+  }
+);
 
     const totalCollected = await db.Payment.sum("amount", {
       where: {
@@ -291,6 +290,43 @@ const createRegion = async (req, res) => {
   }
 }
 
+const getAllOrders = async (req, res) => {
+  try {
+    const orders = await db.Order.findAll({
+      include: [
+        { model: db.Retailer, attributes: ["name"] },
+        { model: db.User, as: "SalesRep", attributes: ["name"] },
+        { model: db.OrderItem, include: [{ model: db.Product, attributes: ["name"] }] },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({ message: "Orders retrieved successfully", data: orders });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+const getOrderById = async (req, res) => {
+  try {
+    const order = await db.Order.findByPk(req.params.id, {include: [
+        { model: db.Retailer, attributes: ["name"] },
+        { model: db.User, as: "SalesRep", attributes: ["name"] },
+        { model: db.OrderItem, include: [{ model: db.Product, attributes: ["name"] }] },
+      ]});
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.status(200).json({ message: "Order retrieved successfully", data: order });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}      
+
 module.exports = {
   setTarget,
   getAllTargets,
@@ -298,5 +334,7 @@ module.exports = {
   updateTarget,
   deleteTarget,
   getRepPerformance,
-    createRegion,
+  createRegion,
+  getAllOrders,
+  getOrderById,
 };

@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controller/admin/adminController");
-const isAuthenticated = require("../middleware/authorization");
+const { verifyToken, verifyRole } = require("../middleware/authorization");
 
-router.use(isAuthenticated);
+router.use(verifyToken, verifyRole("admin"));
 
 // Users
 router.get("/users", adminController.getAllUsers);
@@ -21,6 +21,8 @@ router.get("/products/:id", adminController.getProductById);
 router.put("/products/:id", adminController.updateProduct);
 router.patch("/products/:id/deactivate", adminController.deactivateProduct);
 router.patch("/products/:id/activate", adminController.activateProduct);
+router.get("/get-all-orders", adminController.getAllOrders);
+router.get("/orders/:id", adminController.getOrderById);
 
 // Sales targets
 router.post("/sales-targets", adminController.setTarget);
