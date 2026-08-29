@@ -21,7 +21,7 @@ export default function PaymentsPage() {
     try {
       const [collectionsData, invoicesData] = await Promise.all([
         paymentApi.getMyCollections(),
-        invoiceApi.getAll({ status: 'unpaid' }),
+        invoiceApi.getAll(),
       ])
       setCollections(collectionsData)
       setInvoices(invoicesData.filter((inv) => inv.status !== 'paid'))
@@ -34,6 +34,19 @@ export default function PaymentsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleInvoiceSelect = (invoiceId) => {
+    const invoice = invoices.find((inv) => String(inv.id) === invoiceId)
+    const remaining = invoice?.remaining_balance ?? (
+      Number(invoice?.total_amount || 0) - Number(invoice?.amount_paid || 0)
+    )
+
+    setForm({
+      ...form,
+      invoice_id: invoiceId,
+      amount: invoiceId && remaining > 0 ? remaining.toFixed(2) : '',
+    })
+  }
 
   const handleRecord = async () => {
     setSaving(true)
@@ -85,11 +98,12 @@ export default function PaymentsPage() {
         }
       >
         <div className="space-y-4">
-          <Select label="Invoice" value={form.invoice_id} onChange={(e) => setForm({ ...form, invoice_id: e.target.value })}>
+          <Select label="Invoice" value={form.invoice_id} onChange={(e) => handleInvoiceSelect(e.target.value)}>
             <option value="">Select invoice</option>
             {invoices.map((inv) => (
               <option key={inv.id} value={inv.id}>
-                {inv.invoice_number} — {formatCurrency(inv.total_amount - (inv.amount_paid || 0))} due
+                {inv.invoice_number} — {formatCurrency(inv.remaining_balance ?? (inv.total_amount - (inv.amount_paid || 0)))} due
+                {inv.status === 'partial' ? ' (partial)' : ''}
               </option>
             ))}
           </Select>

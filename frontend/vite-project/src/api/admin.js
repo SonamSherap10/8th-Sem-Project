@@ -24,7 +24,9 @@ export const adminApi = {
   getSalesTarget: (id) => client.get(`/api/admin/sales-targets/${id}`).then(unwrap),
   updateSalesTarget: (id, data) => client.put(`/api/admin/sales-targets/${id}`, data).then(unwrap),
   deleteSalesTarget: (id) => client.delete(`/api/admin/sales-targets/${id}`),
-getRepPerformance: (userId, month, year) =>
-  client.get(`/api/admin/sales-targets/performance/${userId}`, { params: { month, year } }).then(unwrap),
+  getRepPerformance: (userId, month, year) =>
+    client.get(`/api/admin/sales-targets/performance/${userId}`, { params: { month, year } }).then(unwrap),
+  getOverallSalesReport: (month, year) =>
+    client.get('/api/admin/sales-report', { params: { month, year } }).then(unwrap),
   createRegion: (data) => client.post('/api/admin/regions', data).then(unwrap),
 }

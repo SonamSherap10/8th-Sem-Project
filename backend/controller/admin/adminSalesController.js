@@ -166,14 +166,168 @@ const deleteTarget = async (req, res) => {
   }
 };
 
+const parseMonthYear = (month, year) => {
+  const monthNum = Number(month);
+  const yearNum = Number(year);
+
+  if (!month || !year) {
+    return { error: "month and year query parameters are required" };
+  }
+
+  if (!Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
+    return { error: "month must be between 1 and 12" };
+  }
+
+  if (!Number.isInteger(yearNum) || String(yearNum).length !== 4) {
+    return { error: "year must be a 4-digit number" };
+  }
+
+  return { monthNum, yearNum };
+};
+
+const getRepMetrics = async (userId, monthNum, yearNum) => {
+  const orderWhere = {
+    sales_rep_id: userId,
+    status: { [Op.ne]: "cancelled" },
+    [Op.and]: [
+      Sequelize.where(Sequelize.fn("MONTH", Sequelize.col("order_date")), monthNum),
+      Sequelize.where(Sequelize.fn("YEAR", Sequelize.col("order_date")), yearNum),
+    ],
+  };
+
+  const totalSold = await db.Order.sum("total_amount", { where: orderWhere });
+  const orderCount = await db.Order.count({ where: orderWhere });
+
+  const salesTarget = await db.SalesTarget.findOne({
+    where: { user_id: userId, month: monthNum, year: yearNum },
+  });
+
+  const targetAmount = salesTarget ? Number(salesTarget.target_amount) : 0;
+  const soldAmount = Number(totalSold || 0);
+  const salesAchievementPercent = targetAmount > 0 ? (soldAmount / targetAmount) * 100 : 0;
+
+  const totalDueRows = await db.sequelize.query(
+    `SELECT COALESCE(SUM(i.total_amount), 0) as total
+     FROM Invoices i
+     JOIN Orders o ON i.order_id = o.id
+     WHERE o.sales_rep_id = :user_id
+       AND o.status != 'cancelled'
+       AND MONTH(o.order_date) = :month
+       AND YEAR(o.order_date) = :year`,
+    {
+      replacements: { user_id: userId, month: monthNum, year: yearNum },
+      type: db.sequelize.QueryTypes.SELECT,
+    }
+  );
+
+  const dueAmount = Number(totalDueRows[0]?.total || 0);
+
+  const totalCollected = await db.Payment.sum("amount", {
+    where: {
+      collected_by: userId,
+      [Op.and]: [
+        Sequelize.where(Sequelize.fn("MONTH", Sequelize.col("payment_date")), monthNum),
+        Sequelize.where(Sequelize.fn("YEAR", Sequelize.col("payment_date")), yearNum),
+      ],
+    },
+  });
+
+  const collectedAmount = Number(totalCollected || 0);
+  const collectionRatePercent = dueAmount > 0 ? (collectedAmount / dueAmount) * 100 : 0;
+  const performanceScore = (salesAchievementPercent * 0.6) + (collectionRatePercent * 0.4);
+
+  return {
+    total_sold: soldAmount,
+    target_amount: targetAmount,
+    sales_achievement_percent: Math.round(salesAchievementPercent * 100) / 100,
+    total_due: dueAmount,
+    total_collected: collectedAmount,
+    collection_rate_percent: Math.round(collectionRatePercent * 100) / 100,
+    order_count: orderCount,
+    performance_score: Math.round(performanceScore * 100) / 100,
+  };
+};
+
+const getOverallSalesReport = async (req, res) => {
+  try {
+    const parsed = parseMonthYear(req.query.month, req.query.year);
+    if (parsed.error) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const { monthNum, yearNum } = parsed;
+
+    const salesReps = await db.User.findAll({
+      where: { role: "sales_rep" },
+      attributes: ["id", "name", "email", "is_active"],
+      order: [["name", "ASC"]],
+    });
+
+    const salesRepsReport = [];
+
+    for (const rep of salesReps) {
+      const metrics = await getRepMetrics(rep.id, monthNum, yearNum);
+      salesRepsReport.push({
+        user_id: rep.id,
+        name: rep.name,
+        email: rep.email,
+        is_active: rep.is_active,
+        ...metrics,
+      });
+    }
+
+    salesRepsReport.sort((a, b) => b.total_sold - a.total_sold);
+
+    const summary = salesRepsReport.reduce(
+      (acc, rep) => ({
+        total_sold: acc.total_sold + rep.total_sold,
+        total_target: acc.total_target + rep.target_amount,
+        total_due: acc.total_due + rep.total_due,
+        total_collected: acc.total_collected + rep.total_collected,
+        total_orders: acc.total_orders + rep.order_count,
+      }),
+      { total_sold: 0, total_target: 0, total_due: 0, total_collected: 0, total_orders: 0 }
+    );
+
+    summary.sales_achievement_percent = summary.total_target > 0
+      ? Math.round((summary.total_sold / summary.total_target) * 10000) / 100
+      : 0;
+
+    summary.collection_rate_percent = summary.total_due > 0
+      ? Math.round((summary.total_collected / summary.total_due) * 10000) / 100
+      : 0;
+
+    summary.performance_score = Math.round(
+      (summary.sales_achievement_percent * 0.6 + summary.collection_rate_percent * 0.4) * 100
+    ) / 100;
+
+    summary.active_sales_reps = salesReps.filter((rep) => rep.is_active).length;
+    summary.reps_with_sales = salesRepsReport.filter((rep) => rep.total_sold > 0).length;
+
+    res.status(200).json({
+      message: "Overall sales report retrieved successfully",
+      data: {
+        month: monthNum,
+        year: yearNum,
+        summary,
+        sales_reps: salesRepsReport,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const getRepPerformance = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const { month, year } = req.body;
-
-    if (!month || !year) {
-      return res.status(400).json({ error: "month and year  parameters are required" });
+    const parsed = parseMonthYear(req.query.month, req.query.year);
+    if (parsed.error) {
+      return res.status(400).json({ error: parsed.error });
     }
+
+    const { monthNum, yearNum } = parsed;
 
     const user = await db.User.findByPk(user_id, {
       attributes: { exclude: ["password_hash"] },
@@ -183,69 +337,13 @@ const getRepPerformance = async (req, res) => {
       return res.status(400).json({ error: "User must exist and have role sales_rep" });
     }
 
-    const monthNum = Number(month);
-    const yearNum = Number(year);
-const totalSold = await db.Order.sum("total_amount", {
-  where: {
-    sales_rep_id: user_id,
-    status: { [Op.ne]: "cancelled" },
-    [Op.and]: [
-      Sequelize.where(
-        Sequelize.fn("MONTH", Sequelize.col("Order.order_date")),
-        monthNum
-      ),
-      Sequelize.where(
-        Sequelize.fn("YEAR", Sequelize.col("Order.order_date")),
-        yearNum
-      ),
-    ],
-  },
-});
+    const metrics = await getRepMetrics(user_id, monthNum, yearNum);
 
-    if (!totalSold) {
-  return res.status(404).json({
-    error: `No orders found for this sales rep in ${monthNum}/${yearNum}`,
-  });
-}
-
-    const salesTarget = await db.SalesTarget.findOne({
-      where: { user_id, month: monthNum, year: yearNum },
-    });
-
-    const targetAmount = salesTarget ? Number(salesTarget.target_amount) : 0;
-    const soldAmount = totalSold || 0;
-
-    const salesAchievementPercent = targetAmount > 0
-      ? (soldAmount / targetAmount) * 100
-      : 0;
-
-    const totalDue = await db.sequelize.query(
-  `SELECT SUM(i.total_amount) as total FROM Invoices i JOIN Orders o ON i.order_id = o.id WHERE o.sales_rep_id = :user_id
-    AND MONTH(o.order_date) = :month AND YEAR(o.order_date) = :year`,
-  {
-    replacements: { user_id, month: monthNum, year: yearNum },
-    type: db.sequelize.QueryTypes.SELECT,
-  }
-);
-
-    const totalCollected = await db.Payment.sum("amount", {
-      where: {
-        collected_by: user_id,
-        [Op.and]: [
-          Sequelize.where(Sequelize.fn("MONTH", Sequelize.col("payment_date")), monthNum),
-          Sequelize.where(Sequelize.fn("YEAR", Sequelize.col("payment_date")), yearNum),
-        ],
-      },
-    });
-
-    const dueAmount = totalDue || 0;
-    const collectedAmount = totalCollected || 0;
-
-    const collectionRatePercent = dueAmount > 0
-      ? (collectedAmount / dueAmount) * 100
-      : 0;
-
-    const performanceScore = (salesAchievementPercent * 0.6) + (collectionRatePercent * 0.4);
+    if (metrics.order_count === 0) {
+      return res.status(404).json({
+        error: `No orders found for this sales rep in ${monthNum}/${yearNum}`,
+      });
+    }
 
     res.status(200).json({
       message: "Rep performance retrieved successfully",
@@ -253,13 +351,7 @@ const totalSold = await db.Order.sum("total_amount", {
         name: user.name,
         month: monthNum,
         year: yearNum,
-        total_sold: soldAmount,
-        target_amount: targetAmount,
-        sales_achievement_percent: salesAchievementPercent,
-        total_due: dueAmount,
-        total_collected: collectedAmount,
-        collection_rate_percent: collectionRatePercent,
-        performance_score: performanceScore,
+        ...metrics,
       },
     });
   } catch (error) {
@@ -333,6 +425,7 @@ module.exports = {
   getTargetById,
   updateTarget,
   deleteTarget,
+  getOverallSalesReport,
   getRepPerformance,
   createRegion,
   getAllOrders,

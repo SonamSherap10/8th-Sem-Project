@@ -199,7 +199,26 @@ const getDispatchSummary = async (req, res) => {
   }
 };
 
+const getConfirmedOrders = async (req, res) => {
+  try {
+    const orders = await db.Order.findAll({
+      where: { status: "confirmed" },
+      include: [
+        { model: db.Retailer, attributes: ["name"] },
+        { model: db.User, as: "SalesRep", attributes: ["name"] },
+      ],
+      order: [["createdAt", "ASC"]],
+    });
+
+    res.status(200).json({ message: "Confirmed orders retrieved successfully", data: orders });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 module.exports = {
   dispatchOrder,
   getDispatchSummary,
+  getConfirmedOrders,
 };

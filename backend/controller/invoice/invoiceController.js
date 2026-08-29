@@ -1,6 +1,22 @@
 const db = require("../../model/index");
 const { Op, Sequelize } = require("sequelize");
 
+const getAmountPaidMap = async (invoiceIds) => {
+  if (!invoiceIds.length) return {};
+
+  const rows = await db.Payment.findAll({
+    attributes: [
+      "invoice_id",
+      [Sequelize.fn("SUM", Sequelize.col("amount")), "amount_paid"],
+    ],
+    where: { invoice_id: invoiceIds },
+    group: ["invoice_id"],
+    raw: true,
+  });
+
+  return Object.fromEntries(rows.map((row) => [row.invoice_id, Number(row.amount_paid)]));
+};
+
 const getAllInvoices = async (req, res) => {
   try {
     const where = {};
@@ -36,11 +52,18 @@ const getAllInvoices = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    const data = invoices.map((invoice) => ({
-      ...invoice.toJSON(),
-      retailer_name: invoice.Order?.Retailer?.name,
-      sales_rep_name: invoice.Order?.SalesRep?.name,
-    }));
+    const paidMap = await getAmountPaidMap(invoices.map((invoice) => invoice.id));
+
+    const data = invoices.map((invoice) => {
+      const amount_paid = paidMap[invoice.id] || 0;
+      return {
+        ...invoice.toJSON(),
+        amount_paid,
+        remaining_balance: Number(invoice.total_amount) - amount_paid,
+        retailer_name: invoice.Order?.Retailer?.name,
+        sales_rep_name: invoice.Order?.SalesRep?.name,
+      };
+    });
 
     res.status(200).json({ message: "Invoices retrieved successfully", data });
   } catch (error) {
@@ -72,7 +95,19 @@ const getInvoiceById = async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    res.status(200).json({ message: "Invoice retrieved successfully", data: invoice });
+    const amount_paid = invoice.Payments?.reduce(
+      (sum, payment) => sum + Number(payment.amount),
+      0
+    ) || 0;
+
+    res.status(200).json({
+      message: "Invoice retrieved successfully",
+      data: {
+        ...invoice.toJSON(),
+        amount_paid,
+        remaining_balance: Number(invoice.total_amount) - amount_paid,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
@@ -108,7 +143,19 @@ const getInvoiceByOrder = async (req, res) => {
       return res.status(404).json({ error: "Invoice not found for this order" });
     }
 
-    res.status(200).json({ message: "Invoice retrieved successfully", data: invoice });
+    const amount_paid = invoice.Payments?.reduce(
+      (sum, payment) => sum + Number(payment.amount),
+      0
+    ) || 0;
+
+    res.status(200).json({
+      message: "Invoice retrieved successfully",
+      data: {
+        ...invoice.toJSON(),
+        amount_paid,
+        remaining_balance: Number(invoice.total_amount) - amount_paid,
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });

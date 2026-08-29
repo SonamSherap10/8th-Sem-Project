@@ -56,10 +56,14 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials no user" });
   }
-
+   if(user.is_active == 0 ){
+    return res.status(400).json({
+      error:"please wait for the admin to approve your id"
+    })
+   }
     const ispassword_hashValid = await bcrypt.compare(password_hash, user.password_hash);
     if (!ispassword_hashValid) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Invalid credentials" }); 
     }
 
     const token = jwt.sign(

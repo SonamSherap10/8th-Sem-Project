@@ -24,7 +24,8 @@ router.patch("/products/:id/activate", adminController.activateProduct);
 router.get("/get-all-orders", adminController.getAllOrders);
 router.get("/orders/:id", adminController.getOrderById);
 
-// Sales targets
+// Sales targets & reports
+router.get("/sales-report", adminController.getOverallSalesReport);
 router.post("/sales-targets", adminController.setTarget);
 router.get("/sales-targets/performance/:user_id", adminController.getRepPerformance);
 router.get("/sales-targets", adminController.getAllTargets);

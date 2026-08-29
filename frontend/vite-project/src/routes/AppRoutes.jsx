@@ -15,6 +15,7 @@ import RetailersPage from '../pages/admin/RetailersPage'
 import RegionsPage from '../pages/admin/RegionsPage'
 import AdminOrdersPage from '../pages/admin/AdminOrdersPage'
 import SalesTargetsPage from '../pages/admin/SalesTargetsPage'
+import SalesReportPage from '../pages/admin/SalesReportPage'
 import AlertsPage from '../pages/admin/AlertsPage'
 
 import InvoicesPage from '../pages/shared/InvoicesPage'
@@ -57,6 +58,7 @@ export default function AppRoutes() {
           <Route path="/admin/orders" element={<AdminOrdersPage />} />
           <Route path="/admin/invoices" element={<InvoicesPage />} />
           <Route path="/admin/sales-targets" element={<SalesTargetsPage />} />
+          <Route path="/admin/sales-report" element={<SalesReportPage />} />
           <Route path="/admin/inventory" element={<InventoryPage canAdjust />} />
           <Route path="/admin/alerts" element={<AlertsPage />} />
         </Route>

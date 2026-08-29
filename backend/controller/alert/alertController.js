@@ -23,7 +23,8 @@ const checkNearExpiry = async (req, res) => {
           type: "near_expiry",
           reference_id: batch.id,
           reference_type: "batch",
-          is_read: false,
+          is_read: true,
+          message: `Product ${batch.Product.name} batch ${batch.batch_number} expires on ${batch.expiry_date} with ${batch.quantity_remaining} units remaining`,
         },
       });
 

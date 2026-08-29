@@ -37,7 +37,7 @@ module.exports = (sequelize, Sequelize) => {
     },
     is_active: {
       type: Sequelize.BOOLEAN,
-      defaultValue: true,
+      defaultValue: false,
     },
   }, { timestamps: true });
   return Retailer;

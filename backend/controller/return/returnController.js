@@ -34,8 +34,9 @@ const createReturn = async (req, res) => {
     const returnItemsData = [];
 
     for (const item of items) {
-      const { product_id, batch_id, quantity } = item;
-
+      const { product_id, batch_id, quantity } = item; 
+      const product_detail = await db.Product.findByPk(product_id, { transaction });
+       const product_name= product_detail.dataValues.name
       if (!product_id || quantity === undefined) {
         await transaction.rollback();
         return res.status(400).json({ error: "Each item requires product_id and quantity" });
@@ -70,7 +71,7 @@ const createReturn = async (req, res) => {
       if (alreadyReturned + Number(quantity) > orderItem.quantity) {
         await transaction.rollback();
         return res.status(400).json({
-          error: `Return quantity for product ${product_id} exceeds original ordered quantity`,
+          error: `Return quantity for ${product_name} exceeds original ordered quantity`,
         });
       }
 

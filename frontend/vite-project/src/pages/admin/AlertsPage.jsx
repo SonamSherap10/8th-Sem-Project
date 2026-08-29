@@ -29,7 +29,7 @@ export default function AlertsPage() {
     }
   }
 
-  useEffect(() => { load() }, [typeFilter, readFilter])
+  
 
   const runChecks = async () => {
     setChecking(true)
@@ -55,6 +55,8 @@ export default function AlertsPage() {
       setError(getErrorMessage(err))
     }
   }
+
+  useEffect(() => { load() , runChecks }, [typeFilter, readFilter])
 
   const columns = [
     { key: 'type', label: 'Type', render: (r) => <Badge status={r.type}>{capitalize(r.type)}</Badge> },
